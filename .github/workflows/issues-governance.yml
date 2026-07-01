@@ -51,14 +51,14 @@ jobs:
 
             const violations = [];
 
-            // Title policy: plain imperative, no pseudo-prefixes / commit-style prefixes
-            const disallowedTitlePrefix = /^(?:\[[^\]]+\]\s*|ticket-\d+\s*:\s*|[a-z]+-\d+\s*:\s*|(?:feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert|content|research|epic)\([^\)]+\)\s*:\s*)/i;
+            // Title policy: require canonical `type: summary` prefix (matches issue templates)
+            const requiredTitlePrefix = /^(epic|feature|task|bug|research|skill-change|governance|chore):\s+\S.*/i;
             if (!title) {
               violations.push('Title is required.');
             } else {
               if (title.length > 72) violations.push('Title must be 72 characters or fewer.');
-              if (disallowedTitlePrefix.test(title)) {
-                violations.push('Title must be plain imperative text (no prefixes like TICKET-123, [BUG], or type(scope):).');
+              if (!requiredTitlePrefix.test(title)) {
+                violations.push('Title must use a canonical prefix, e.g. `epic: <summary>`, `task: <summary>`, `bug: <summary>`, `research: <summary>`.');
               }
             }
 
@@ -95,13 +95,15 @@ jobs:
               }
 
               const marker = '<!-- issues-governance-comment -->';
-              const bodyText = `${marker}
-❌ This issue is missing required governance fields:
-
-${violations.map(v => `- [ ] ${v}`).join('
-')}
-
-Please update the issue. This label will auto-clear when checks pass.`;
+              const checklist = violations.map(v => `- [ ] ${v}`).join('\n');
+              const bodyText = [
+                marker,
+                '❌ This issue is missing required governance fields:',
+                '',
+                checklist,
+                '',
+                'Please update the issue. This label will auto-clear when checks pass.'
+              ].join('\n');
 
               // Update prior bot comment if present; else create one
               const { data: comments } = await github.rest.issues.listComments({
